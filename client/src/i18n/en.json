@@ -1,0 +1,53 @@
+{
+  "nav": {
+    "home": "Home",
+    "collector": "Collector",
+    "household": "Household",
+    "recycler": "Recycler",
+    "municipality": "Municipality"
+  },
+  "common": {
+    "offline": "You are offline",
+    "online": "Back online",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "home": "Home",
+    "collector": "Collector",
+    "household": "Household",
+    "recycler": "Recycler",
+    "municipality": "Municipality"
+  },
+  "landing": {
+    "title": "Smart E-Waste Management",
+    "subtitle": "Collect. Know the Value. Sell Fairly. Recycle Safely. A fully traceable, offline-first platform for the informal recycling sector.",
+    "selectPortal": "Select Your Portal",
+    "collectDesc": "Scan, appraise, and sell e-waste fairly.",
+    "householdDesc": "Dispose safely and earn rewards.",
+    "recyclerDesc": "Source verified e-waste efficiently.",
+    "municipalityDesc": "Monitor city-wide recycling stats.",
+    "collectiveImpact": "Our Collective Impact",
+    "fairValueAi": "Fair Value AI",
+    "fairValueDesc": "Real-time market prices protect collectors from exploitation.",
+    "offlineFirst": "Offline First",
+    "offlineDesc": "Works without internet. Syncs when you reach connectivity.",
+    "digitalLedger": "Digital Ledger",
+    "ledgerDesc": "Every transaction is traceable for compliance and incentives."
+  },
+  "collector": {
+    "dashboard": "Collector Dashboard",
+    "newCollection": "New Collection (AI)",
+    "myLots": "My Material Lots",
+    "findRecycler": "Find Recyclers",
+    "earnings": "Earnings & Receipts",
+    "safetyGuide": "Safety Guidelines",
+    "householdDrives": "Household Drives",
+    "welcome": "Welcome",
+    "assistantReady": "Voice Assistant Ready",
+    "askPrice": "Tap mic and ask: \"What is the smartphone price today?\"",
+    "todayPerformance": "Today's Performance",
+    "collected": "Collected",
+    "netEarnings": "Net Earnings",
+    "activeLots": "Active Lots"
+  }
+}

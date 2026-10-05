@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn-large {
+    @apply w-full py-4 px-6 rounded-xl text-lg font-bold shadow-md transition-all flex items-center justify-center gap-3;
+  }
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-green-700 active:scale-95;
+  }
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-blue-700 active:scale-95;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-5;
+  }
+}
+
+body {
+  background-color: #f8fafc;
+  font-family: system-ui, -apple-system, sans-serif;
+}
