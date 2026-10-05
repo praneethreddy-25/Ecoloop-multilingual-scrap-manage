@@ -2,6 +2,8 @@
  * ECOLOOP Server — Fair Value Utilities
  */
 
+const crypto = require('crypto');
+
 const MATERIAL_PRICES = {
   mobile_phone:    { min: 220, max: 380 },
   laptop:          { min: 180, max: 320 },
@@ -76,15 +78,12 @@ function generateTxCode() {
   return `TXN-${year}-${num}`;
 }
 
-/** Simple hash for traceability */
+/** Secure SHA-256 hash for traceability */
 function generateHash(data) {
-  const str = JSON.stringify(data) + Date.now();
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash) + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return 'HASH_' + Math.abs(hash).toString(16).toUpperCase().padStart(16, '0');
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(data))
+    .digest('hex');
 }
 
 module.exports = { calculateFairValue, detectAnomaly, generateLotCode, generateTxCode, generateHash };
