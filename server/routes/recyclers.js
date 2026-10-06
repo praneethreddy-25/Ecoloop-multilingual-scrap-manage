@@ -7,7 +7,7 @@ router.get('/', (req, res) => {
   try {
     const { material, city } = req.query;
     let recyclers = all('SELECT * FROM recyclers WHERE status = ?', ['active']);
-    
+
     if (material) {
       recyclers = recyclers.filter(r => {
         try {
@@ -48,7 +48,7 @@ router.get('/match/:lotId', (req, res) => {
 
     const items = JSON.parse(lot.items || '[]');
     const materialTypes = items.map(i => i.type || i.material_type).filter(Boolean);
-    
+
     const recyclers = all('SELECT * FROM recyclers WHERE status = ?', ['active']);
     const priceMap = {};
     all('SELECT * FROM material_prices').forEach(p => { priceMap[p.material_type] = p; });
@@ -58,17 +58,20 @@ router.get('/match/:lotId', (req, res) => {
       const matchCount = materialTypes.filter(m => accepted.includes(m)).length;
       const matchScore = materialTypes.length ? matchCount / materialTypes.length : 0;
 
-      // Calculate offer based on lot weight + random recycler multiplier
+      // Calculate a consistent offer based on recycler rating and material match
       const multiplier = 0.85 + (r.rating / 10);
       const midValue = (lot.estimated_value_min + lot.estimated_value_max) / 2;
-      const offerPrice = Math.round(midValue * multiplier * (0.9 + Math.random() * 0.2));
+      const matchBonus = 1 + (matchScore * 0.1);
+      const offerPrice = Math.round(midValue * multiplier * matchBonus);
+
+      const pickupAvailable = r.rating >= 4.5 ? 'Today' : 'Tomorrow';
 
       return {
         ...r,
         materials_accepted: accepted,
         matchScore,
         offerPrice,
-        pickupAvailable: Math.random() > 0.3 ? 'Today' : 'Tomorrow',
+        pickupAvailable,
         isRecommended: false,
       };
     }).filter(r => r.matchScore > 0)
