@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import useStore from '../store/useStore';
 import { saveOfflineCollection, getOfflineCollections, clearSynced } from '../utils/db';
 import toast from 'react-hot-toast';
+import api from '../api/client';
 
 export const useOfflineSync = () => {
   const { isOnline, setOnlineStatus, offlineQueue, syncOfflineQueue } = useStore();
@@ -10,14 +11,25 @@ export const useOfflineSync = () => {
     const handleOnline = async () => {
       setOnlineStatus(true);
       toast.success('Back online! Syncing data...');
-      
+
       const collections = await getOfflineCollections();
       if (collections.length > 0) {
-        // Mock sync to server
-        console.log('Syncing collections:', collections);
-        await clearSynced();
-        syncOfflineQueue();
-        toast.success(`Successfully synced ${collections.length} items.`);
+        try {
+          let syncedCount = 0;
+
+          for (const collection of collections) {
+            await api.post('/lots', collection);
+            syncedCount += 1;
+          }
+
+          await clearSynced();
+          syncOfflineQueue();
+
+          toast.success(`Successfully synced ${syncedCount} items.`);
+        } catch (error) {
+          console.error('Offline sync failed:', error);
+          toast.error('Some offline data could not be synced. It will be retried.');
+        }
       }
     };
 
