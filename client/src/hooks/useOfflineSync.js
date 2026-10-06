@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import useStore from '../store/useStore';
-import { saveOfflineCollection, getOfflineCollections, clearSynced } from '../utils/db';
+import { saveOfflineCollection, getOfflineCollections, deleteOfflineCollection } from '../utils/db';
 import toast from 'react-hot-toast';
 import api from '../api/client';
 
@@ -14,21 +14,30 @@ export const useOfflineSync = () => {
 
       const collections = await getOfflineCollections();
       if (collections.length > 0) {
-        try {
-          let syncedCount = 0;
+        let syncedCount = 0;
+        let failedCount = 0;
 
-          for (const collection of collections) {
+        for (const collection of collections) {
+          try {
             await api.post('/lots', collection);
+            await deleteOfflineCollection(collection.id);
             syncedCount += 1;
+          } catch (error) {
+            failedCount += 1;
+            console.error(`Failed to sync offline collection ${collection.id}:`, error);
           }
+        }
 
-          await clearSynced();
+        if (syncedCount > 0) {
           syncOfflineQueue();
+        }
 
+        if (failedCount === 0) {
           toast.success(`Successfully synced ${syncedCount} items.`);
-        } catch (error) {
-          console.error('Offline sync failed:', error);
-          toast.error('Some offline data could not be synced. It will be retried.');
+        } else if (syncedCount > 0) {
+          toast.success(`${syncedCount} items synced. ${failedCount} will be retried.`);
+        } else {
+          toast.error('Offline data could not be synced. It will be retried.');
         }
       }
     };
