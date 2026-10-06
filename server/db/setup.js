@@ -21,18 +21,18 @@ let SQL;
  */
 async function initDb() {
   if (db) return db;
-  
+
   SQL = await require('sql.js')();
-  
+
   if (fs.existsSync(DB_FILE)) {
     const fileBuffer = fs.readFileSync(DB_FILE);
     db = new SQL.Database(fileBuffer);
   } else {
     db = new SQL.Database();
   }
-  
+
   // Helper: auto-save to disk after every write
-  db.run = function(sql, params) {
+  db.run = function (sql, params) {
     this.exec(sql, params);
     persist();
   };
@@ -40,7 +40,7 @@ async function initDb() {
   createTables();
   seedData();
   persist();
-  
+
   console.log('✅ ECOLOOP database initialized');
   return db;
 }
@@ -53,7 +53,7 @@ function persist() {
 }
 
 function execSQL(sql) {
-  try { db.exec(sql); } catch(e) { /* ignore if already exists */ }
+  try { db.exec(sql); } catch (e) { /* ignore if already exists */ }
 }
 
 function run(sql, params = []) {
@@ -61,7 +61,7 @@ function run(sql, params = []) {
     db.run(sql, params);
     persist();
     return true;
-  } catch(e) {
+  } catch (e) {
     console.error('DB run error:', e.message);
     return false;
   }
@@ -78,7 +78,7 @@ function get(sql, params = []) {
     }
     stmt.free();
     return null;
-  } catch(e) {
+  } catch (e) {
     return null;
   }
 }
@@ -93,7 +93,7 @@ function all(sql, params = []) {
       columns.forEach((col, i) => { obj[col] = row[i]; });
       return obj;
     });
-  } catch(e) {
+  } catch (e) {
     return [];
   }
 }
@@ -145,6 +145,17 @@ function createTables() {
       max_price REAL,
       unit TEXT DEFAULT 'per kg',
       updated_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS material_price_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      material_type TEXT NOT NULL,
+      recorded_date TEXT NOT NULL,
+      min_price REAL NOT NULL,
+      max_price REAL NOT NULL,
+      avg_price REAL NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
+      UNIQUE(material_type, recorded_date)
     );
 
     CREATE TABLE IF NOT EXISTS lots (
@@ -229,7 +240,7 @@ function seedData() {
     ['tablet', 'IT & Telecom', 200, 350],
     ['ups', 'Power Equipment', 30, 80],
   ];
-  
+
   materials.forEach(([type, cat, min, max]) => {
     db.run(
       "INSERT OR IGNORE INTO material_prices (material_type, category, min_price, max_price) VALUES (?, ?, ?, ?)",
@@ -252,14 +263,14 @@ function seedData() {
   recyclerData.forEach(([name, loc, lat, lng, mats, cap, rating], i) => {
     db.run(
       "INSERT INTO users (name, phone, role, password_hash) VALUES (?, ?, ?, ?)",
-      [name, `98765432${10+i}`, 'recycler', '$2b$10$dummy_hash_recycler']
+      [name, `98765432${10 + i}`, 'recycler', '$2b$10$dummy_hash_recycler']
     );
     const userRes = db.exec(`SELECT id FROM users WHERE name='${name}'`);
     if (userRes[0]) {
       const userId = userRes[0].values[0][0];
       db.run(
         "INSERT INTO recyclers (user_id, recycler_code, authorization_number, facility_name, location, latitude, longitude, materials_accepted, capacity_kg, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [userId, `REC-${String(i+1).padStart(3,'0')}`, `MoEFCC-2024-${1000+i}`, name, loc, lat, lng, mats, cap, rating]
+        [userId, `REC-${String(i + 1).padStart(3, '0')}`, `MoEFCC-2024-${1000 + i}`, name, loc, lat, lng, mats, cap, rating]
       );
     }
   });
@@ -285,7 +296,7 @@ function seedData() {
       const userId = userRes[0].values[0][0];
       db.run(
         "INSERT INTO collectors (user_id, collector_code, rating, score, badge_level) VALUES (?, ?, ?, ?, ?)",
-        [userId, `COL-CHN-00${i+1}`, 4.0 + (i * 0.2), score, badge]
+        [userId, `COL-CHN-00${i + 1}`, 4.0 + (i * 0.2), score, badge]
       );
     }
   });

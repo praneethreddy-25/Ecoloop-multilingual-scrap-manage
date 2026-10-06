@@ -23,26 +23,53 @@ router.get('/:materialType', (req, res) => {
   }
 });
 
-// GET price history (mock 30-day data)
+// GET persistent price history
 router.get('/history/:materialType', (req, res) => {
   try {
-    const price = get('SELECT * FROM material_prices WHERE material_type = ?', [req.params.materialType]);
-    if (!price) return res.status(404).json({ error: 'Material not found' });
+    const materialType = req.params.materialType;
 
-    const history = [];
-    const today = new Date();
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const variation = 0.9 + Math.random() * 0.2;
-      history.push({
-        date: date.toISOString().split('T')[0],
-        min_price: Math.round(price.min_price * variation),
-        max_price: Math.round(price.max_price * variation),
-        avg_price: Math.round(((price.min_price + price.max_price) / 2) * variation),
-      });
+    const price = get(
+      'SELECT * FROM material_prices WHERE material_type = ?',
+      [materialType]
+    );
+
+    if (!price) {
+      return res.status(404).json({ error: 'Material not found' });
     }
-    res.json({ material_type: req.params.materialType, history });
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Record today's current price if it does not already exist
+    run(
+      `INSERT OR IGNORE INTO material_price_history
+       (material_type, recorded_date, min_price, max_price, avg_price)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        materialType,
+        today,
+        price.min_price,
+        price.max_price,
+        (price.min_price + price.max_price) / 2,
+      ]
+    );
+
+    const history = all(
+      `SELECT
+         recorded_date AS date,
+         min_price,
+         max_price,
+         avg_price
+       FROM material_price_history
+       WHERE material_type = ?
+       ORDER BY recorded_date DESC
+       LIMIT 30`,
+      [materialType]
+    ).reverse();
+
+    res.json({
+      material_type: materialType,
+      history,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
