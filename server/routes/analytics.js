@@ -24,24 +24,71 @@ router.get('/municipality', (req, res) => {
       });
     });
 
-    // Monthly trend (mock 6 months)
-    const monthlyTrend = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'].map((month, i) => ({
-      month,
-      weight: Math.round(180 + i * 35 + Math.random() * 30),
-      earnings: Math.round(45000 + i * 8000 + Math.random() * 5000),
-      lots: Math.round(15 + i * 3),
-    }));
+    // Monthly trend calculated from real database records
+    const monthlyMap = {};
+
+    lots.forEach(lot => {
+      const dateValue = lot.created_at || lot.createdAt;
+      if (!dateValue) return;
+
+      const date = new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return;
+
+      const monthKey = date.toISOString().slice(0, 7);
+      const monthName = date.toLocaleString('en-US', { month: 'short' });
+
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = {
+          month: monthName,
+          weight: 0,
+          earnings: 0,
+          lots: 0,
+        };
+      }
+
+      monthlyMap[monthKey].weight += Number(lot.total_weight || 0);
+      monthlyMap[monthKey].lots += 1;
+    });
+
+    transactions.forEach(transaction => {
+      const dateValue = transaction.created_at || transaction.createdAt;
+      if (!dateValue) return;
+
+      const date = new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return;
+
+      const monthKey = date.toISOString().slice(0, 7);
+
+      if (monthlyMap[monthKey]) {
+        monthlyMap[monthKey].earnings += Number(transaction.final_price || 0);
+      }
+    });
+
+    const monthlyTrend = Object.entries(monthlyMap)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([, data]) => ({
+        month: data.month,
+        weight: Math.round(data.weight),
+        earnings: Math.round(data.earnings),
+        lots: data.lots,
+      }));
 
     res.json({
       summary: {
-        totalWeightKg: Math.round(totalWeight + 18400),
-        formalRecyclingKg: Math.round(totalWeight * 0.85 + 14700),
+        totalWeightKg: Math.round(totalWeight),
+        formalRecyclingKg: Math.round(
+          completedLots.reduce(
+            (sum, lot) => sum + Number(lot.total_weight || 0),
+            0
+          )
+        ),
         activeCollectors: collectors.length,
         verifiedRecyclers: recyclers.length,
-        totalTransactions: transactions.length + 520,
-        totalEarningsINR: Math.round(totalEarnings + 285000),
+        totalTransactions: transactions.length,
+        totalEarningsINR: Math.round(totalEarnings),
       },
-      materialBreakdown: Object.entries(materialBreakdown).map(([name, weight]) => ({ name, weight: Math.round(weight + 200) })),
+      materialBreakdown: Object.entries(materialBreakdown).map(([name, weight]) => ({ name, weight: Math.round(weight) })),
       monthlyTrend,
       topCollectors: collectors.slice(0, 5).map(c => ({
         id: c.id,
@@ -67,7 +114,7 @@ router.get('/municipality', (req, res) => {
 router.get('/collector/:id', (req, res) => {
   try {
     const collector = get('SELECT * FROM collectors WHERE id = ? OR collector_code = ?', [req.params.id, req.params.id]);
-    
+
     const weeklyData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
       day,
       earnings: Math.round(800 + Math.random() * 2000),
