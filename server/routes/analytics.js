@@ -113,31 +113,192 @@ router.get('/municipality', (req, res) => {
 // GET collector personal analytics
 router.get('/collector/:id', (req, res) => {
   try {
-    const collector = get('SELECT * FROM collectors WHERE id = ? OR collector_code = ?', [req.params.id, req.params.id]);
+    const collector = get(
+      'SELECT * FROM collectors WHERE id = ? OR collector_code = ?',
+      [req.params.id, req.params.id]
+    );
 
-    const weeklyData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => ({
-      day,
-      earnings: Math.round(800 + Math.random() * 2000),
-      weight: Math.round(3 + Math.random() * 15),
+    if (!collector) {
+      return res.status(404).json({ error: 'Collector not found' });
+    }
+
+    const collectorId = collector.id;
+
+    const lots = all(
+      'SELECT * FROM lots WHERE collector_id = ?',
+      [collectorId]
+    );
+
+    const transactions = all(
+      'SELECT * FROM transactions WHERE collector_id = ?',
+      [collectorId]
+    );
+
+    const now = new Date();
+
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay();
+    const daysSinceMonday = day === 0 ? 6 : day - 1;
+    startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1
+    );
+
+    const getDate = item =>
+      new Date(item.created_at || item.createdAt);
+
+    const getWeight = lot =>
+      Number(lot.total_weight || lot.weight || 0);
+
+    const getEarnings = transaction =>
+      Number(
+        transaction.final_price ||
+        transaction.finalPrice ||
+        transaction.amount ||
+        0
+      );
+
+    const todayLots = lots.filter(
+      lot => getDate(lot) >= startOfToday
+    );
+
+    const weekLots = lots.filter(
+      lot => getDate(lot) >= startOfWeek
+    );
+
+    const monthLots = lots.filter(
+      lot => getDate(lot) >= startOfMonth
+    );
+
+    const todayTransactions = transactions.filter(
+      transaction => getDate(transaction) >= startOfToday
+    );
+
+    const weekTransactions = transactions.filter(
+      transaction => getDate(transaction) >= startOfWeek
+    );
+
+    const monthTransactions = transactions.filter(
+      transaction => getDate(transaction) >= startOfMonth
+    );
+
+    const sumWeight = list =>
+      list.reduce((sum, item) => sum + getWeight(item), 0);
+
+    const sumEarnings = list =>
+      list.reduce((sum, item) => sum + getEarnings(item), 0);
+
+    // Weekly chart data
+    const weeklyData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      .map((dayName, index) => {
+        const dayDate = new Date(startOfWeek);
+        dayDate.setDate(startOfWeek.getDate() + index);
+
+        const nextDay = new Date(dayDate);
+        nextDay.setDate(dayDate.getDate() + 1);
+
+        const dayLots = lots.filter(lot => {
+          const date = getDate(lot);
+          return date >= dayDate && date < nextDay;
+        });
+
+        const dayTransactions = transactions.filter(transaction => {
+          const date = getDate(transaction);
+          return date >= dayDate && date < nextDay;
+        });
+
+        return {
+          day: dayName,
+          earnings: Math.round(sumEarnings(dayTransactions)),
+          weight: Math.round(sumWeight(dayLots) * 10) / 10,
+        };
+      });
+
+    // Material breakdown
+    const materialBreakdownMap = {};
+
+    monthLots.forEach(lot => {
+      const items = JSON.parse(lot.items || '[]');
+
+      items.forEach(item => {
+        const name =
+          item.type ||
+          item.material_type ||
+          item.name ||
+          'Unknown';
+
+        materialBreakdownMap[name] =
+          (materialBreakdownMap[name] || 0) +
+          Number(item.weight || 0);
+      });
+    });
+
+    const materialBreakdown = Object.entries(
+      materialBreakdownMap
+    ).map(([name, value]) => ({
+      name,
+      value: Math.round(value * 10) / 10,
     }));
+
+    const monthWeight = sumWeight(monthLots);
 
     res.json({
       collector,
-      today: { earnings: 2200, weight: 8.4, transactions: 2 },
-      week: { earnings: 13250, weight: 48.7, transactions: 7 },
-      month: { earnings: 27650, weight: 198.2, transactions: 24 },
+
+      today: {
+        earnings: Math.round(sumEarnings(todayTransactions)),
+        weight: Math.round(sumWeight(todayLots) * 10) / 10,
+        transactions: todayTransactions.length,
+      },
+
+      week: {
+        earnings: Math.round(sumEarnings(weekTransactions)),
+        weight: Math.round(sumWeight(weekLots) * 10) / 10,
+        transactions: weekTransactions.length,
+      },
+
+      month: {
+        earnings: Math.round(sumEarnings(monthTransactions)),
+        weight: Math.round(monthWeight * 10) / 10,
+        transactions: monthTransactions.length,
+      },
+
       weeklyData,
-      materialBreakdown: [
-        { name: 'Mobile Phones', value: 5200 },
-        { name: 'Laptops', value: 9850 },
-        { name: 'PCBs', value: 8400 },
-        { name: 'Cables', value: 4200 },
-      ],
+
+      materialBreakdown,
+
       impact: {
-        ewasteKg: 248,
-        co2Kg: 412,
-        batteriesHandled: 32,
-        materialsRecovered: ['Copper', 'Aluminium', 'Gold traces', 'Plastics', 'Steel'],
+        ewasteKg: Math.round(monthWeight * 10) / 10,
+        co2Kg: Math.round(monthWeight * 1.66 * 10) / 10,
+        batteriesHandled: monthLots.reduce((count, lot) => {
+          const items = JSON.parse(lot.items || '[]');
+
+          return (
+            count +
+            items
+              .filter(item =>
+                String(
+                  item.type ||
+                  item.material_type ||
+                  item.name ||
+                  ''
+                ).toLowerCase().includes('battery')
+              )
+              .reduce(
+                (sum, item) =>
+                  sum + Number(item.quantity || 1),
+                0
+              )
+          );
+        }, 0),
+        materialsRecovered: Object.keys(materialBreakdownMap),
       },
     });
   } catch (err) {
