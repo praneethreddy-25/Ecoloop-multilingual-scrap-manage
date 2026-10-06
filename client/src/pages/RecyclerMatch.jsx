@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useStore from '../store/useStore';
 import RecyclerCard from '../components/RecyclerCard';
+import api from '../api/client';
 import toast from 'react-hot-toast';
-import { 
-  ShieldCheck, Package, MapPin, Sparkles, AlertCircle, 
-  MessageSquare, Send, X, ArrowLeft, CheckCircle2, Clock 
+import {
+  ShieldCheck, Package, MapPin, Sparkles, AlertCircle,
+  MessageSquare, Send, X, ArrowLeft, CheckCircle2, Clock
 } from 'lucide-react';
 
 export default function RecyclerMatch() {
@@ -15,9 +16,44 @@ export default function RecyclerMatch() {
   // Active lot: either currentLot or the newest lot in lots
   const activeLot = currentLot || (lots.length > 0 ? lots[0] : null);
 
+  useEffect(() => {
+  if (!activeLot?.id) return;
+
+  const fetchRecyclerMatches = async () => {
+    setIsLoadingRecyclers(true);
+
+    try {
+      const response = await api.get(`/recyclers/match/${activeLot.id}`);
+
+      const mappedRecyclers = response.data.map(recycler => ({
+        ...recycler,
+        verified: recycler.status === 'active',
+        offeredPrice: recycler.offerPrice,
+        materialsAccepted: recycler.materials_accepted || [],
+        pickupTime: recycler.pickupAvailable,
+        isBestMatch: recycler.isRecommended,
+        isAnomaly: false,
+      }));
+
+      setRecyclers(mappedRecyclers);
+    } catch (error) {
+      console.error('Failed to load recycler matches:', error);
+      toast.error('Unable to load recycler matches.');
+      setRecyclers([]);
+    } finally {
+      setIsLoadingRecyclers(false);
+    }
+  };
+
+  fetchRecyclerMatches();
+}, [activeLot?.id]);
+
   // Tracks WHICH recycler is currently selected to view/display message history
   // Exactly ONE recycler at a time can show message history!
   const [selectedChatRecyclerId, setSelectedChatRecyclerId] = useState(null);
+
+  const [recyclers, setRecyclers] = useState([]);
+  const [isLoadingRecyclers, setIsLoadingRecyclers] = useState(false);
 
   // Modal state for composing messages
   const [selectedRecycler, setSelectedRecycler] = useState(null);
@@ -134,8 +170,8 @@ export default function RecyclerMatch() {
         </div>
         <h2 className="text-xl font-black text-gray-800">No active material lot found</h2>
         <p className="text-sm text-gray-500">Scan or upload an e-waste photo first to create your digital lot passport.</p>
-        <button 
-          className="btn-large btn-primary w-full" 
+        <button
+          className="btn-large btn-primary w-full"
           onClick={() => navigate('/collector/collect')}
         >
           Scan & Create New Lot
@@ -150,7 +186,7 @@ export default function RecyclerMatch() {
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
       {/* Navigation Header */}
       <div className="flex items-center justify-between">
-        <button 
+        <button
           onClick={() => navigate('/collector')}
           className="text-xs font-bold text-gray-500 hover:text-gray-800 flex items-center gap-1"
         >
@@ -166,10 +202,10 @@ export default function RecyclerMatch() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
           <div className="flex items-center gap-4">
             {activeLot.photo ? (
-              <img 
-                src={activeLot.photo} 
-                alt="Approved Lot" 
-                className="w-18 h-18 rounded-xl object-cover border-2 border-white/40 shadow" 
+              <img
+                src={activeLot.photo}
+                alt="Approved Lot"
+                className="w-18 h-18 rounded-xl object-cover border-2 border-white/40 shadow"
               />
             ) : (
               <div className="w-18 h-18 bg-white/20 rounded-xl flex items-center justify-center text-3xl">
@@ -235,10 +271,10 @@ export default function RecyclerMatch() {
           const isSelected = selectedChatRecyclerId === recycler.id;
 
           return (
-            <RecyclerCard 
-              key={recycler.id} 
-              recycler={recycler} 
-              fairValue={activeLot.fairValue} 
+            <RecyclerCard
+              key={recycler.id}
+              recycler={recycler}
+              fairValue={activeLot.fairValue}
               onAccept={handleAccept}
               onOpenMessage={openMessageModal}
               onToggleChat={() => setSelectedChatRecyclerId(isSelected ? null : recycler.id)}
@@ -263,7 +299,7 @@ export default function RecyclerMatch() {
                   Regarding Lot <strong className="font-mono text-gray-700">{activeLot.id}</strong> ({mat.quantity}x {mat.name})
                 </p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedRecycler(null)}
                 className="text-gray-400 hover:text-gray-600 p-1"
               >
@@ -280,13 +316,12 @@ export default function RecyclerMatch() {
                 {recyclerMessages
                   .filter(m => m.lotId === activeLot.id && m.recyclerId === selectedRecycler.id)
                   .map(msg => (
-                    <div 
-                      key={msg.id} 
-                      className={`text-xs p-2 rounded-lg ${
-                        msg.sender === 'collector' 
-                          ? 'bg-green-100 text-green-900 border border-green-200 ml-4' 
+                    <div
+                      key={msg.id}
+                      className={`text-xs p-2 rounded-lg ${msg.sender === 'collector'
+                          ? 'bg-green-100 text-green-900 border border-green-200 ml-4'
                           : 'bg-white text-gray-800 border border-gray-200 mr-4'
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between font-bold text-[10px] mb-0.5">
                         <span>{msg.sender === 'collector' ? 'You' : selectedRecycler.name}</span>
