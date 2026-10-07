@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { get, all, run } = require('../db/setup');
 const { generateLotCode } = require('../utils/fairValue');
+const authMiddleware = require('../middleware/auth');
 
 // GET all lots for current collector (no auth for demo)
 router.get('/', (req, res) => {
@@ -30,7 +31,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST create new lot
-router.post('/', (req, res) => {
+router.post('/', authMiddleware, (req, res) => {
   try {
     const { items = [], collectorId = 1 } = req.body;
     
@@ -83,7 +84,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT update lot status
-router.put('/:id/status', (req, res) => {
+router.put('/:id/status', authMiddleware, (req, res) => {
   try {
     const { status } = req.body;
     run('UPDATE lots SET status = ?, updated_at = datetime(\'now\') WHERE id = ? OR lot_code = ?', 
@@ -96,7 +97,7 @@ router.put('/:id/status', (req, res) => {
 });
 
 // DELETE lot
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authMiddleware, (req, res) => {
   try {
     run('DELETE FROM lots WHERE id = ? OR lot_code = ?', [req.params.id, req.params.id]);
     res.json({ message: 'Lot deleted' });

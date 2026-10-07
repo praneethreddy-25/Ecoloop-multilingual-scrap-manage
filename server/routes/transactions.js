@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { get, all, run } = require('../db/setup');
 const { generateTxCode } = require('../utils/fairValue');
+const authMiddleware = require('../middleware/auth');
 
 // GET all transactions
 router.get('/', (req, res) => {
@@ -33,7 +34,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST create transaction (accept offer)
-router.post('/', (req, res) => {
+router.post('/', authMiddleware, (req, res) => {
   try {
     const { lotId, recyclerId, offeredPrice, paymentMethod = 'UPI', collectorId = 1 } = req.body;
     
@@ -81,7 +82,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT update payment status
-router.put('/:id', (req, res) => {
+router.put('/:id', authMiddleware, (req, res) => {
   try {
     const { payment_status } = req.body;
     run('UPDATE transactions SET payment_status = ? WHERE id = ? OR tx_code = ?', 
