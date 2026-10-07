@@ -22,7 +22,7 @@ router.get('/:id', (req, res) => {
   try {
     const lot = get('SELECT * FROM lots WHERE id = ? OR lot_code = ?', [req.params.id, req.params.id]);
     if (!lot) return res.status(404).json({ error: 'Lot not found' });
-    
+
     const events = all('SELECT * FROM traceability_events WHERE lot_id = ? ORDER BY id ASC', [lot.id]);
     res.json({ ...lot, items: JSON.parse(lot.items || '[]'), traceability: events });
   } catch (err) {
@@ -34,8 +34,43 @@ router.get('/:id', (req, res) => {
 router.post('/', authMiddleware, (req, res) => {
   try {
     const { items = [], collectorId = 1 } = req.body;
-    
-    if (!items.length) return res.status(400).json({ error: 'No items provided' });
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'At least one item is required' });
+    }
+
+    if (!collectorId || Number.isNaN(Number(collectorId))) {
+      return res.status(400).json({ error: 'Valid collectorId is required' });
+    }
+
+    for (const item of items) {
+      const materialType = item.type || item.material_type;
+      const weight = Number(item.weight);
+      const quantity = Number(item.quantity);
+
+      if (!materialType || typeof materialType !== 'string') {
+        return res.status(400).json({
+          error: 'Each item must have a valid material type'
+        });
+      }
+
+      if (
+        (item.weight !== undefined &&
+          (!Number.isFinite(weight) || weight <= 0)) ||
+        (item.quantity !== undefined &&
+          (!Number.isInteger(quantity) || quantity <= 0))
+      ) {
+        return res.status(400).json({
+          error: `Invalid weight or quantity for ${materialType}`
+        });
+      }
+
+      if (item.weight === undefined && item.quantity === undefined) {
+        return res.status(400).json({
+          error: `Weight or quantity is required for ${materialType}`
+        });
+      }
+    }
 
     const lotCode = generateLotCode();
     let totalWeight = 0;
@@ -48,7 +83,10 @@ router.post('/', authMiddleware, (req, res) => {
     prices.forEach(p => { priceMap[p.material_type] = p; });
 
     items.forEach(item => {
-      const w = parseFloat(item.weight) || (parseInt(item.quantity) * 0.3);
+      const w =
+        item.weight !== undefined
+          ? Number(item.weight)
+          : Number(item.quantity) * 0.3;
       totalWeight += w;
       const price = priceMap[item.type] || priceMap[item.material_type];
       if (price) {
@@ -64,12 +102,12 @@ router.post('/', authMiddleware, (req, res) => {
     );
 
     const newLot = get('SELECT * FROM lots WHERE lot_code = ?', [lotCode]);
-    
+
     // Add traceability event
     if (newLot) {
       run(
         'INSERT INTO traceability_events (lot_id, event_type, description, location, hash) VALUES (?, ?, ?, ?, ?)',
-        [newLot.id, 'lot_created', `Lot ${lotCode} created with ${items.length} item type(s)`, 'ECOLOOP Platform', `HASH_${Math.random().toString(36).substr(2,16).toUpperCase()}`]
+        [newLot.id, 'lot_created', `Lot ${lotCode} created with ${items.length} item type(s)`, 'ECOLOOP Platform', `HASH_${Math.random().toString(36).substr(2, 16).toUpperCase()}`]
       );
     }
 
@@ -87,8 +125,8 @@ router.post('/', authMiddleware, (req, res) => {
 router.put('/:id/status', authMiddleware, (req, res) => {
   try {
     const { status } = req.body;
-    run('UPDATE lots SET status = ?, updated_at = datetime(\'now\') WHERE id = ? OR lot_code = ?', 
-        [status, req.params.id, req.params.id]);
+    run('UPDATE lots SET status = ?, updated_at = datetime(\'now\') WHERE id = ? OR lot_code = ?',
+      [status, req.params.id, req.params.id]);
     const lot = get('SELECT * FROM lots WHERE id = ? OR lot_code = ?', [req.params.id, req.params.id]);
     res.json({ ...lot, items: JSON.parse(lot.items || '[]') });
   } catch (err) {
