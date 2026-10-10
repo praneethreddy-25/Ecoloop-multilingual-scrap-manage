@@ -1,176 +1,316 @@
-# ♻️ ECOLOOP — Digital Platform for Formal E-Waste Collection
+# 🌱 ECOLOOP — E-Waste Management & Recycling Platform
 
-> **"Collect. Know the Value. Sell Fairly. Recycle Safely."**
+ECOLOOP is a full-stack e-waste management platform designed to connect households, waste collectors, authorized recyclers, and municipalities through a digital recycling ecosystem.
 
-ECOLOOP bridges informal e-waste collectors with the formal recycling ecosystem through AI classification, fair-value estimation, price anomaly detection, authorized-recycler matching, and offline-first digital material passports.
+The platform helps users manage electronic waste collections, estimate material values, match collectors with recyclers, track recycling transactions, and monitor environmental impact.
 
----
+## ✨ Key Features
 
-## 🚀 Quick Start
+### ♻️ E-Waste Collection Management
+- Create and manage electronic waste collection lots.
+- Record material types, quantities, weights, and conditions.
+- Estimate collection value using material price ranges.
+- Validate submitted collection data before storing it.
+
+### 💰 Fair Value Estimation
+- Calculate estimated minimum and maximum values for collected materials.
+- Apply condition-based pricing adjustments.
+- Maintain material pricing information by category.
+- Store daily material price history in the database when the history endpoint is accessed.
+
+### 🤝 Recycler Matching
+- Retrieve recycler matches from the backend API.
+- Match recyclers according to accepted material types.
+- Calculate consistent recycler offers using material values, recycler ratings, and matching scores.
+- Display recycler information and offer details.
+
+### 🔄 Offline Collection Synchronization
+- Support saving collection data for offline use.
+- Synchronize queued collections with the backend when connectivity returns.
+- Remove successfully synchronized entries from the offline queue.
+- Retain failed entries for retry instead of discarding them.
+
+### 🔐 Authentication and Security
+- Use JSON Web Tokens (JWT) for authentication.
+- Require a configured `JWT_SECRET` instead of relying on a hardcoded fallback.
+- Protect lot creation, status updates, deletion, and transaction mutations with authentication middleware.
+- Generate SHA-256 hashes for traceability data.
+
+### 📊 Analytics and Reporting
+- Calculate municipality summary metrics from database records.
+- Generate monthly collection and earnings trends from available dated records.
+- Calculate collector-level earnings, weights, and transaction statistics from stored data.
+- Present material breakdowns and environmental-impact indicators.
+
+*Note: Some platform-wide impact and geographic-zone values may still be demonstration data.*
+
+### 🔎 Traceability
+- Maintain traceability events associated with collection lots.
+- Track important stages of the collection and transaction lifecycle.
+- Provide lot and transaction information through backend endpoints.
+
+## 🛠️ Technology Stack
+
+| Component | Technologies |
+|---|---|
+| Frontend | React 18, Vite |
+| Styling | Tailwind CSS |
+| State management | Zustand |
+| API communication | Axios |
+| Backend | Node.js, Express.js |
+| Database | SQLite using sql.js |
+| Authentication | JSON Web Token (JWT), bcrypt |
+| Offline storage | IndexedDB |
+| Charts and analytics | Recharts |
+| Maps | Leaflet |
+| Image recognition | TensorFlow.js, COCO-SSD, MobileNet |
+| Other utilities | QR generation, jsPDF, Web Speech API |
+
+## 📁 Project Structure
+
+```text
+ECOLOOP/
+├── client/
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── client.js
+│   │   ├── hooks/
+│   │   │   └── useOfflineSync.js
+│   │   ├── pages/
+│   │   │   └── RecyclerMatch.jsx
+│   │   └── ...
+│   ├── .env.example
+│   └── package.json
+│
+├── server/
+│   ├── db/
+│   │   └── setup.js
+│   ├── middleware/
+│   │   └── auth.js
+│   ├── routes/
+│   │   ├── analytics.js
+│   │   ├── lots.js
+│   │   ├── prices.js
+│   │   ├── recyclers.js
+│   │   └── transactions.js
+│   ├── utils/
+│   │   └── fairValue.js
+│   └── package.json
+│
+├── .gitignore
+└── README.md
+```
+
+*The tree highlights the main files involved in the project improvements; additional files and directories may exist.*
+
+## ⚙️ Installation and Setup
 
 ### Prerequisites
-- Node.js 18+ (https://nodejs.org)
-- npm 9+
 
-### 1. Start the Backend Server
+Install the following before running the project:
+
+- Node.js and npm
+- Git
+- A terminal or code editor such as Visual Studio Code
+
+### 1. Clone the repository
+
+```bash
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd <YOUR_PROJECT_FOLDER>
+```
+
+Replace the placeholders with your actual GitHub repository URL and project folder name.
+
+### 2. Install backend dependencies
 
 ```bash
 cd server
 npm install
-npm run dev
 ```
-Server runs at: **http://localhost:5000**
 
-### 2. Start the Frontend
+### 3. Configure backend environment variables
+
+Create or update `server/.env` with the environment variables required by your server.
+
+At minimum, configure a strong JWT secret:
+
+```env
+JWT_SECRET=replace_with_a_long_random_secret
+```
+
+If your server requires other environment variables, retain those as well.
+
+**Important:** Never commit your real `.env` file or expose your JWT secret publicly.
+
+### 4. Start the backend
+
+From the `server` directory, run:
+
+```bash
+npm start
+```
+
+If the project does not define a `start` script, use the development command specified in `server/package.json`.
+
+The API is expected to use the default address:
+
+```text
+http://localhost:5000/api
+```
+
+Change this address if your backend is configured to run elsewhere.
+
+### 5. Configure the frontend
+
+Open a second terminal and navigate to the client directory:
 
 ```bash
 cd client
 npm install
+```
+
+Create `client/.env` with:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+The project also includes `client/.env.example` as a template.
+
+### 6. Start the frontend
+
+From the `client` directory:
+
+```bash
 npm run dev
 ```
-Frontend runs at: **http://localhost:3000**
 
-### 3. Open in Browser
+Open the local URL printed by Vite in your browser, commonly:
 
-Visit **http://localhost:3000** to see ECOLOOP.
-
-### Offline mode
-
-The collector photo flow runs without Google, SerpAPI, or any other API key. GPS uses browser location permission and stores coordinates on the lot; no API key is required.
-
----
-
-## 🗺️ Portal Access
-
-| Portal | URL | Description |
-|--------|-----|-------------|
-| 🏠 Landing | `/` | Main landing page |
-| 👷 Collector | `/collector` | Informal collector dashboard |
-| 📦 New Collection | `/collector/collect` | AI classification + lot creation |
-| ♻️ Recycler Match | `/collector/recyclers` | Find authorized recyclers |
-| 💰 Earnings | `/collector/earnings` | Payment dashboard |
-| 🛡️ Safety Guide | `/collector/safety` | Pictorial safety guide |
-| 🏠 Household | `/household` | Household e-waste disposal |
-| 🏭 Recycler | `/recycler` | Recycler management portal |
-| 🏛️ Municipality | `/municipality` | City analytics dashboard |
-| 🔗 Track Lot | `/track/:lotId` | Traceability ledger |
-
----
-
-## 🧠 Key Features
-
-### 1. AI E-Waste Classification
-- In-browser image classification
-- Confidence percentages per category
-- Collector can confirm or correct
-
-### 2. Digital Material Passport
-- Unique LOT ID: `EW-CHN-2026-XXXXX`
-- Full traceability from collection → recycling
-- QR code for each lot
-
-### 3. Fair Value Engine
-- Price range estimation based on material + weight + condition
-- "Why this price?" detailed explanation
-- Market context and recycler demand
-
-### 4. Price Anomaly Detection
-- 🟢 Fair offer
-- 🟡 Slightly low (< 85% of fair value)
-- 🔴 Abnormally low (< 70% of fair value)
-- Suggests alternative recyclers
-
-### 5. Offline-First
-- Works without internet
-- IndexedDB local storage
-- Auto-sync when connection restored
-- Service Worker caching
-
-### 6. Voice Interface
-- Web Speech API
-- Ask prices by voice
-- Audio safety instructions
-- Multilingual (EN/HI/TA)
-
-### 7. Multilingual UI
-- English 🇬🇧
-- Hindi 🇮🇳
-- Tamil 🇮🇳
-
-### 8. Environmental Impact
-- E-waste diverted (kg)
-- CO₂ avoided (kg)
-- Materials recovered
-
-### 9. Gamification
-- Collector reputation score (0-100)
-- Bronze → Silver → Gold Recycler badges
-- Achievement milestones
-
----
-
-## 🏗️ Architecture
-
-```
-ECOLOOP
-├── client/          # React 18 + Vite + TailwindCSS
-│   ├── src/
-│   │   ├── pages/   # 10 portal pages
-│   │   ├── components/  # 15+ reusable components
-│   │   ├── store/   # Zustand global state
-│   │   ├── hooks/   # useOfflineSync, useVoice
-│   │   ├── utils/   # fairValue, db (IndexedDB), lotId
-│   │   └── i18n/    # EN, HI, TA translations
-│   └── public/
-│       └── sw.js    # Service Worker
-└── server/          # Node.js + Express + SQLite
-    ├── routes/      # auth, lots, recyclers, transactions, prices, analytics
-    ├── db/          # SQLite setup + seed data
-    ├── middleware/  # JWT auth, error handling
-    └── utils/       # fairValue, hash generation
+```text
+http://localhost:5173
 ```
 
-## 💡 Tech Stack
+Keep both the backend and frontend terminals running during development.
 
-| Layer | Tech |
-|-------|------|
-| Frontend | React 18, Vite, TailwindCSS |
-| State | Zustand, React Query |
-| Charts | Recharts |
-| Maps | Leaflet.js |
-| Offline | Service Worker, IndexedDB |
-| i18n | react-i18next |
-| Voice | Web Speech API |
-| PDF | jsPDF |
-| QR Code | qrcode.react |
-| Backend | Node.js, Express |
-| Database | SQLite (better-sqlite3) |
-| Auth | JWT |
-| Animations | Framer Motion |
+## 🔌 API Overview
+
+The backend exposes REST API endpoints for the platform's core functionality.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/lots` | Retrieve collection lots |
+| `GET /api/lots/:id` | Retrieve a lot and its traceability events |
+| `POST /api/lots` | Create a collection lot; authentication required |
+| `PUT /api/lots/:id/status` | Update lot status; authentication required |
+| `DELETE /api/lots/:id` | Delete a lot; authentication required |
+| `GET /api/recyclers` | Retrieve recycler listings |
+| `GET /api/prices` | Retrieve material prices |
+| `GET /api/prices/:materialType` | Retrieve a material's price |
+| `GET /api/prices/history/:materialType` | Retrieve stored price history |
+| `POST /api/prices/estimate` | Estimate the value of a collection |
+| `POST /api/transactions` | Create a transaction; authentication required |
+| `PUT /api/transactions/:id` | Update transaction payment status; authentication required |
+| `GET /api/analytics/municipality` | Retrieve municipality analytics |
+| `GET /api/analytics/collector/:id` | Retrieve collector analytics |
+| `GET /api/analytics/impact` | Retrieve platform impact indicators |
+
+Protected endpoints require a valid JWT in the request header:
+
+```http
+Authorization: Bearer YOUR_JWT_TOKEN
+```
+
+Refer to the route files under `server/routes/` for request formats and response details.
+
+## 🗄️ Database
+
+ECOLOOP uses SQLite through `sql.js`.
+
+The database setup includes tables for core platform entities, including:
+
+- Users and collectors
+- Recyclers
+- Collection lots
+- Transactions
+- Material prices
+- Traceability events
+- Material price history
+
+The database setup also seeds initial material prices and recycler records for demonstration purposes.
+
+The material price history endpoint records the current price for the requested material and date if a record does not already exist. It does not fabricate 30 days of historical prices.
+
+## 🔒 Security Notes
+
+- Keep environment variables and credentials out of source control.
+- Use a strong, private `JWT_SECRET`.
+- Protected routes reject requests without valid authentication.
+- Validate collection data before inserting it into the database.
+- Review user permissions and ownership checks before deploying publicly.
+- Use HTTPS and appropriate production configuration for deployment.
+
+## 🧪 Testing and Verification
+
+Before demonstrating or deploying the project, verify:
+
+1. The backend starts successfully.
+2. The frontend builds successfully.
+3. Login and JWT authentication work with the configured secret.
+4. Invalid collection payloads are rejected.
+5. Authenticated lot and transaction operations work.
+6. Recycler matching returns backend data.
+7. Offline collections synchronize and failed items remain queued.
+8. Price history and analytics endpoints return valid responses.
+9. The application works without exposing credentials or secrets.
+
+Run the available project test and build scripts defined in the respective `package.json` files.
+
+## 📈 Development Improvements
+
+The project has been improved through 13 meaningful Git commits:
+
+1. `chore: add project gitignore`
+2. `refactor: centralize frontend API configuration`
+3. `fix: generate secure traceability hashes`
+4. `fix: make recycler offers deterministic`
+5. `feat: connect recycler matching to backend`
+6. `feat: implement offline collection synchronization`
+7. `feat: add retry handling for offline sync`
+8. `feat: calculate municipality analytics from database`
+9. `feat: calculate collector analytics from database`
+10. `feat: persist material price history`
+11. `security: require configured JWT secret`
+12. `security: protect lot and transaction mutations`
+13. `feat: validate collection lot data`
+
+These changes focus on backend integration, data consistency, offline reliability, database-backed calculations, security, and input validation.
+
+## 🚀 Future Enhancements
+
+Potential next improvements include:
+
+- Automated backend and frontend tests
+- Role-based authorization and resource ownership checks
+- Persistent historical price collection on a scheduled basis
+- Database-backed geographic and environmental-impact analytics
+- Improved loading, empty, and error states
+- Production deployment and monitoring
+- API documentation with Swagger/OpenAPI
+
+## 🤝 Contributing
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Implement and test your changes.
+4. Commit using clear, meaningful commit messages.
+5. Submit a pull request.
+
+## 📄 License
+
+Add your chosen open-source license before distributing the project. Until a license is specified, all rights remain with the copyright holder.
 
 ---
 
-## 🎬 Demo Flow (3-minute presentation)
-
-1. **Problem** → Show collector without info
-2. **AI Classification** → Upload phone photo → 94% confidence
-3. **Digital Lot** → 18 phones, LOT #EW10025
-4. **Fair Value** → ₹1,850–₹2,150 range
-5. **Anomaly** → Recycler offers ₹1,450 → 🔴 WARNING
-6. **Recycler Match** → Choose best authorized recycler
-7. **Offline** → Turn off Wi-Fi → App still works → Sync when back online
-8. **Payment** → Digital receipt TXN00125
-9. **Traceability** → Full chain from collection to recycling
-
----
-
-## 🏆 Hackathon: Challenge 19 — KPR Institute
-
-Built for the **Digital Platform for Formal E-Waste Collection and Recycling** challenge.
-
-**Innovation highlights:**
-- Digital Material Passport (unique traceability)
-- AI Fair Value Engine (price protection)
-- Price Anomaly Detection (fraud prevention)
-- Offline-First (low connectivity areas)
-- Voice + Pictorial UI (low-literacy users)
+**ECOLOOP — Making e-waste recycling more transparent, accessible, and accountable.**
